@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using WebApiPractice.Data;
 using WebApiPractice.Models;
 
 namespace WebApiPractice.Controllers
@@ -7,20 +8,22 @@ namespace WebApiPractice.Controllers
     [Route("api/[controller]")]
     public class PersonController : ControllerBase
     {
-        public static List<Person> DbFake { get; set; } = new List<Person>();
+        
+        public ApplicationDbContext _context { get; set; }
 
         private readonly ILogger<PersonController> _logger;
 
-        public PersonController(ILogger<PersonController> logger)
+        public PersonController(ILogger<PersonController> logger, ApplicationDbContext context)
         {
             _logger = logger;
+            _context = context;
         }
 
         [HttpGet]
         [Route("GetAllPerson")]
         public IActionResult Get()
         {
-            var person = DbFake.Select(x=>x);
+            var person = _context.Person.ToList();
             return Ok(person);
         }
 
@@ -33,25 +36,30 @@ namespace WebApiPractice.Controllers
             if (person == null) {
                 return BadRequest("person should not be null");
             }
-            person.guid = Guid.NewGuid();
-            DbFake.Add(person);
+            person.id = Guid.NewGuid();
+            _context.Person.Add(person);
+            _context.SaveChanges();
             return Ok($"Person {person.Name} {person.LastName} aged {person.Age} created ");
         }
 
         [HttpDelete]
         [Route("person")]
         public IActionResult Delete(Guid guid) {
-            if (!DbFake.Any(p => p.guid == guid))
+
+            var person = _context.Person.SingleOrDefault(p => p.id == guid);
+            if (person == null)
             {
                 return BadRequest($"Person with the guid : {guid} does not exist ");
             }
-            DbFake.RemoveAll(p => p.guid == guid);
-            return Ok($"Persn with guid {guid} removed");
+            
+            _context.Person.Remove(person);
+            _context.SaveChanges();
+            return Ok($"Person with guid {guid} removed");
         }
 
         [HttpGet("{guid:guid}")]
         public IActionResult GetSingle(Guid guid) {
-            var person = DbFake.SingleOrDefault(p => p.guid == guid);
+            var person = _context.Person.SingleOrDefault(p => p.id == guid);
             if (person == null) {
                 return NotFound("Person not found");
             }
