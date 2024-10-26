@@ -8,7 +8,7 @@ namespace WebApiPractice.Controllers
     [Route("api/[controller]")]
     public class PersonController : ControllerBase
     {
-        
+
         public ApplicationDbContext _context { get; set; }
 
         private readonly ILogger<PersonController> _logger;
@@ -51,7 +51,7 @@ namespace WebApiPractice.Controllers
             {
                 return BadRequest($"Person with the guid : {guid} does not exist ");
             }
-            
+
             _context.Person.Remove(person);
             _context.SaveChanges();
             return Ok($"Person with guid {guid} removed");
@@ -64,6 +64,34 @@ namespace WebApiPractice.Controllers
                 return NotFound("Person not found");
             }
             return Ok(person);
+        }
+
+        [HttpGet]
+        [Route("GetAllSearch")]
+
+        public IActionResult Search(string search) {
+
+            var query = _context.Person.ToList();
+
+            var filtered = SearchPerson(search,query);
+
+            if (filtered != null) {
+            return NotFound();
+            }
+
+            return Ok(filtered);    
+
+
+        }
+
+        private IEnumerable<Person> SearchPerson(string search, List<Person> query) {
+
+            
+
+            var filtered = query.Where(person => person.Name.Contains(search) ||
+                                                  person.LastName.Contains(search));
+            return filtered;
+        
         }
         
     }
