@@ -1,6 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
+using Microsoft.IdentityModel.Tokens;
 using WebApiPractice.Data;
 using WebApiPractice.Models;
+
 
 namespace WebApiPractice.Controllers
 {
@@ -69,13 +73,18 @@ namespace WebApiPractice.Controllers
         [HttpGet]
         [Route("GetAllSearch")]
 
-        public IActionResult Search(string search) {
+        public IActionResult Search(string? search = null) {
 
-            var query = _context.Person.ToList();
+            var query = _context.Person.AsQueryable();
+
+            if (string.IsNullOrEmpty(search))
+            {
+                return Ok(query);
+            }
 
             var filtered = SearchPerson(search,query);
 
-            if (filtered != null) {
+            if (filtered.IsNullOrEmpty()) {
             return NotFound();
             }
 
@@ -84,12 +93,12 @@ namespace WebApiPractice.Controllers
 
         }
 
-        private IEnumerable<Person> SearchPerson(string search, List<Person> query) {
+        private IEnumerable<Person> SearchPerson(string search, IQueryable<Person> query) {
 
             
 
-            var filtered = query.Where(person => person.Name.Contains(search) ||
-                                                  person.LastName.Contains(search));
+            var filtered = query.Where(person => EF.Functions.Like(person.Name,$"%{search}%") ||
+                                                 EF.Functions.Like(person.LastName, $"%{search}%")).AsEnumerable();
             return filtered;
         
         }

@@ -1,6 +1,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using WebApiPractice.Data;
+using WebApiPractice.Services;
 
 namespace WebApiPractice
 {
@@ -18,6 +19,8 @@ namespace WebApiPractice
             builder.Services.AddSwaggerGen();
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(builder.Configuration.GetConnectionString("DatabaseConnection")));
+
+            builder.Services.AddScoped<IPriceRecalculationService, PriceCalculationService>();
 
             var app = builder.Build();
 
