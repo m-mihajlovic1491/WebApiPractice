@@ -1,6 +1,8 @@
 
 using Microsoft.EntityFrameworkCore;
 using WebApiPractice.Data;
+using WebApiPractice.Interfaces;
+using WebApiPractice.Repository;
 using WebApiPractice.Services;
 
 namespace WebApiPractice
@@ -21,6 +23,7 @@ namespace WebApiPractice
             options.UseSqlServer(builder.Configuration.GetConnectionString("DatabaseConnection")));
 
             builder.Services.AddScoped<IPriceRecalculationService, PriceCalculationService>();
+            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
             var app = builder.Build();
 

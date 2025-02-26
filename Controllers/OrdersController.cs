@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using WebApiPractice.Data;
 using WebApiPractice.Extensions;
+using WebApiPractice.Interfaces;
 using WebApiPractice.Models;
 using WebApiPractice.Services;
 
@@ -15,13 +16,15 @@ namespace WebApiPractice.Controllers
     public class OrdersController : Controller
     {
         public ApplicationDbContext _context { get; set; }
+        public IOrderRepository _orderRepository { get; }
 
         private readonly ILogger<OrdersController> _logger;
 
-        public OrdersController(ApplicationDbContext context, ILogger<OrdersController> logger)
+        public OrdersController(ApplicationDbContext context, ILogger<OrdersController> logger,IOrderRepository orderRepository)
         {
             _context = context;
             _logger = logger;
+            _orderRepository = orderRepository;
         }
 
         [HttpPost]
@@ -149,6 +152,19 @@ namespace WebApiPractice.Controllers
             return Ok(order.ToDto());
 
 
+
+        }
+
+        [HttpGet]
+        [Route("Orders")]
+        [ProducesResponseType(200,Type = typeof (IEnumerable<Order>))]
+        public IActionResult GetAllOrders()
+        {
+            var orders = _orderRepository.GetOrdersWithLines();
+
+            if (!ModelState.IsValid) return BadRequest("Invalid model");
+
+            return Ok(orders);
 
         }
 
