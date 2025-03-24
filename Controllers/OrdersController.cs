@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using FluentValidation;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,7 @@ using WebApiPractice.Data;
 using WebApiPractice.Extensions;
 using WebApiPractice.Interfaces;
 using WebApiPractice.Models;
+using WebApiPractice.Requests.Command;
 using WebApiPractice.Services;
 
 namespace WebApiPractice.Controllers
@@ -30,15 +32,24 @@ namespace WebApiPractice.Controllers
         [HttpPost]
         [Route("Order")]
 
-        public IActionResult CreateOrder(string orderNumber, string? reference1 = null)
+        public IActionResult CreateOrder([FromBody] CreateOrderRequest newOrder, [FromServices] IValidator<CreateOrderRequest> orderValidator)
         {
+            var validationResult =orderValidator.Validate(newOrder);
+
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(validationResult.Errors);
+            }
+
             var order = new Order
             {
-                Reference1 = reference1,
                 id = Guid.NewGuid(),
-                TotalPrice = 0,
-                OrderNumber = orderNumber
+                Reference1 = newOrder.reference1,
+                OrderNumber = newOrder.orderNumber
+
             };
+
+            
 
             _context.Order.Add(order);
             _context.SaveChanges();
@@ -69,6 +80,7 @@ namespace WebApiPractice.Controllers
         [HttpPost("{orderGuid}/addProduct/{productGuid}")]
         public IActionResult AddProductToOrder(Guid productGuid, Guid orderGuid, [FromServices] IPriceRecalculationService pricingRecalculationService)
         {
+            
             var maybeOrder = _context.Order.Any(o => o.id == orderGuid);
             if (!maybeOrder)
             {
