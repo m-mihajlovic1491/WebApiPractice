@@ -7,5 +7,7 @@ namespace WebApiPractice.Interfaces
     {
         ICollection<Order> GetAllOrders();
         ICollection<OrderDto> GetOrdersWithLines();
+
+        ICollection<Order> GetAllOrdersPaged(int page, int pageSize);
     }
 }

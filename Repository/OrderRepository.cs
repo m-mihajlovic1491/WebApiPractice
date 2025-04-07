@@ -29,5 +29,17 @@ namespace WebApiPractice.Repository
             return orders;
         
         }
+
+        public ICollection<Order> GetAllOrdersPaged(int page, int pageSize)
+        {
+            var ordersPaged = _context.Order
+                
+                .Skip(pageSize * (page-1))
+                .Take(pageSize)
+                .ToList();
+
+            return ordersPaged;
+        }
+      
     }
 }

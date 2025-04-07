@@ -9,7 +9,7 @@ namespace WebApiPractice.Validators
         public OrderValidator()
         {
             RuleFor(order => order.reference1)
-                .MinimumLength(4).WithMessage("Reference 1 must have at least 1 character");           
+                .MinimumLength(4).WithMessage("Reference 1 must have at least 4 characters");           
         }
     }
 }

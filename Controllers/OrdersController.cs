@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.ComponentModel;
 using WebApiPractice.Data;
 using WebApiPractice.Extensions;
 using WebApiPractice.Interfaces;
@@ -60,9 +61,9 @@ namespace WebApiPractice.Controllers
         }
 
         [HttpDelete]
-        [Route("Order")]
+        [Route("Order/{guid}")]
 
-        public async Task<IActionResult> DeleteOrder(Guid guid)
+        public async Task<IActionResult> DeleteOrder([FromRoute]Guid guid)
         {
             var order = await _context.Order.FindAsync(guid);
             if (order is null)
@@ -78,9 +79,10 @@ namespace WebApiPractice.Controllers
         }
 
         [HttpPost("{orderGuid}/addProduct/{productGuid}")]
-        public IActionResult AddProductToOrder(Guid productGuid, Guid orderGuid, [FromServices] IPriceRecalculationService pricingRecalculationService)
+        public async Task<IActionResult> AddProductToOrder(Guid productGuid, Guid orderGuid, [FromServices] IPriceRecalculationService pricingRecalculationService)
         {
-            
+
+                        
             var maybeOrder = _context.Order.Any(o => o.id == orderGuid);
             if (!maybeOrder)
             {
@@ -95,25 +97,34 @@ namespace WebApiPractice.Controllers
 
             var maybeOrderProduct = _context.OrderProduct.Any(op => op.OrderId == orderGuid && op.ProductId == productGuid);
             if (maybeOrderProduct) {
-                return Ok("line in order with desired product already exists");
+                return BadRequest("line in order with desired product already exists");
             }
 
-            
+            using var transaction  = await _context.Database.BeginTransactionAsync();
 
-            _context.OrderProduct.Add(new OrderProduct { ProductId = productGuid, OrderId = orderGuid });
-            _context.SaveChanges();
-            var order = _context.Order.FirstOrDefault(x => x.id == orderGuid);
-            
-            order.TotalPrice = pricingRecalculationService.CalculateTotalPrice(orderGuid);
-            _context.SaveChanges();
-            return Ok($"product {productGuid} sucessfully added to order {orderGuid}");
+            try
+            {
+                _context.OrderProduct.Add(new OrderProduct { ProductId = productGuid, OrderId = orderGuid });
+                _context.SaveChanges();
+                var order = _context.Order
+                    .Include(o=>o.Products)
+                    .FirstOrDefault(x => x.id == orderGuid);
 
-
-
+                
+                order.TotalPrice = pricingRecalculationService.CalculateTotalPrice(orderGuid);
+                _context.SaveChanges();
+                await transaction.CommitAsync();
+                return Ok(order.ToDto());
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         [HttpDelete("{orderGuid}/deleteproductfromorder/{productGuid}")]
-        public IActionResult DeleteProductFromOrder(Guid productGuid, Guid orderGuid, [FromServices] IPriceRecalculationService priceRecalculationService)
+        public IActionResult DeleteProductFromOrder([FromRoute]Guid productGuid, [FromRoute]Guid orderGuid, [FromServices] IPriceRecalculationService priceRecalculationService)
         {
             var maybeOrder = _context.Order.Any(o => o.id == orderGuid);
             if (!maybeOrder)
@@ -170,9 +181,25 @@ namespace WebApiPractice.Controllers
         [HttpGet]
         [Route("Orders")]
         [ProducesResponseType(200,Type = typeof (IEnumerable<Order>))]
-        public IActionResult GetAllOrders()
+        public IActionResult GetAllOrders([FromQuery] int page,
+                                          [FromQuery] int pageSize,
+                                          [FromQuery] string search)
         {
             var orders = _orderRepository.GetOrdersWithLines();
+
+            if (!ModelState.IsValid) return BadRequest("Invalid model");
+
+            return Ok(orders);
+
+        }
+
+        [HttpGet]
+        [Route("GetAllPaged")]        
+        public IActionResult GetAllOrdersPaged([FromQuery] int page,
+                                          [FromQuery] int pageSize)
+                                          
+        {
+            var orders = _orderRepository.GetAllOrdersPaged(page,pageSize);
 
             if (!ModelState.IsValid) return BadRequest("Invalid model");
 
